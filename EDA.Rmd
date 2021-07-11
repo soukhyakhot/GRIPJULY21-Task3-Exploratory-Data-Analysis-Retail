@@ -1,0 +1,302 @@
+---
+title: "Untitled"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(DT)
+library(knitr)
+library(dplyr)
+library(tidyverse)
+library(tidyr)
+library(ggplot2)
+library(corrplot)
+library(maps)
+library(ggpubr)
+library(mapproj)
+```
+
+
+
+
+
+
+
+
+
+
+
+Dataset
+================================================================================
+```{r}
+data=read.csv("C:\\Users\\HP\\Downloads\\SampleSuperstore.csv");
+datatable(data)
+```
+
+Information of Data
+================================================================================
+
+Row
+--------------------------------------------------------------------------------
+
+### Structure of data
+
+```{r}
+str(data)
+```
+
+
+### Summary of Sales, Discount, Quantity, Profit
+
+```{r}
+summary(data[,c(10,11,12,13)])
+
+```
+Row
+--------------------------------------------------------------------------------
+
+### Checking if any column has null values
+
+```{r}
+sapply(data,function(x) sum(is.na(x)))
+
+```
+
+
+Correlation
+================================================================================
+
+Row
+--------------------------------------------------------------------------------
+
+### correlation(sales,quntity,discount,profit)
+
+```{r}
+corrplot(cor(data[,c(10,11,12,13)]),method="color")
+
+```
+
+
+Profit by Shipmode 
+================================================================================
+
+Row
+--------------------------------------------------------------------------------
+
+
+### Profit
+
+```{r}
+shipmode_profit=select(data,Ship.Mode,Profit) %>%
+  group_by(Ship.Mode) %>% 
+summarise(profit=sum(Profit));
+per3=round(shipmode_profit$profit/sum(shipmode_profit$profit)*100,2);
+lab3=paste0(shipmode_profit$Ship.Mode," (",per3,"%)");
+ggdonutchart(shipmode_profit,"profit",label="Ship.Mode",lab.pos="in",fill="Ship.Mode",color = "white",palette =c("blue","red","orange","green"))
+
+```
+
+
+State wise Profit
+================================================================================
+
+Row
+--------------------------------------------------------------------------------
+
+### State wise Profit
+
+```{r}
+
+tab=map_data("state") %>% as_tibble();
+
+state_profit=select(data,State,Profit) %>%
+  group_by(State) %>%
+  summarise(Profit=sum(Profit)) %>%
+  mutate(State=str_to_lower(State));
+
+tab1= tab %>% 
+  left_join(state_profit,by=c("region"="State"));
+
+state=select(tab1,long,lat,region) %>% 
+  group_by(region) %>% 
+  summarise(Long=mean(long),Lat=mean(lat));
+
+ggplot(tab1, aes(long, lat, group = group))+ geom_polygon(aes(fill = Profit), color = "white")+ scale_fill_gradient(low="#56B1F7",high="#132B43")+ geom_text(data = state, aes(Long, Lat, label = region,group=1), size = 3)+coord_map("bonne",lat0=50)+theme_void()
+
+
+```
+
+
+State wise Analysis
+================================================================================
+
+Row
+--------------------------------------------------------------------------------
+
+### Sales
+
+```{r}
+state_sales=select(data,State,Sales) %>%
+  group_by(State) %>% 
+  summarise(sales=sum(Sales));
+longdata1=gather(state_sales,key="count",value="values",sales);
+ggplot(longdata1,mapping=aes(x=longdata1$State))+geom_col(aes(y=longdata1$values,fill=count))+theme(axis.text.x=element_text(angle=90,hjust=1))+scale_fill_manual(values="blue")+xlab("State")+ylab("Sales")
+
+
+```
+
+
+### Discount
+
+```{r}
+state_discount=select(data,State,Discount) %>%
+  group_by(State) %>% 
+  summarise(discount=sum(Discount));
+longdata2=gather(state_discount,key="count",value="values",discount);
+ggplot(longdata2,mapping=aes(x=longdata2$State))+geom_col(aes(y=longdata2$values,fill=count))+theme(axis.text.x=element_text(angle=90,hjust=1))+scale_fill_manual(values="red")+xlab("State")+ylab("Discount")
+
+
+```
+
+### Profit
+
+```{r}
+state_profit=select(data,State,Profit) %>%
+  group_by(State) %>% 
+  summarise(profit=sum(Profit));
+longdata3=gather(state_profit,key="count",value="values",profit);
+ggplot(longdata3,mapping=aes(x=longdata3$State))+geom_col(aes(y=longdata3$values,fill=count))+theme(axis.text.x=element_text(angle=90,hjust=1))+scale_fill_manual(values="green")+xlab("State")+ylab("Profit")
+
+
+```
+
+
+Category-Subcategory wise analysis
+================================================================================
+
+Row
+--------------------------------------------------------------------------------
+
+### Sales
+```{r}
+subcategory_sales=select(data,Category,Sub.Category,Sales) %>%
+  group_by(Category,Sub.Category) %>% 
+  summarise(sales=sum(Sales));
+
+ggplot(subcategory_sales,mapping=aes(x=subcategory_sales$Sub.Category))+geom_col(aes(y=subcategory_sales$sales,fill="sales"))+facet_grid(.~Category,scales="free")+theme(axis.text.x=element_text(angle=90,hjust=1))+scale_fill_manual(values="steelblue")+xlab("Sub Categories")+ylab("Sales")
+
+
+```
+
+
+### Discount
+```{r}
+subcategory_discount=select(data,Category,Sub.Category,Discount) %>%
+  group_by(Category,Sub.Category) %>% 
+  summarise(discount=sum(Discount));
+
+ggplot(subcategory_discount,mapping=aes(x=subcategory_discount$Sub.Category))+geom_col(aes(y=subcategory_discount$discount,fill="discount"))+facet_grid(.~Category,scales="free")+theme(axis.text.x=element_text(angle=90,hjust=1))+scale_fill_manual(values="red")+xlab("Sub Categories")+ylab("Discount")
+
+
+```
+
+
+### Profit
+```{r}
+subcategory_profit=select(data,Category,Sub.Category,Profit) %>%
+  group_by(Category,Sub.Category) %>% 
+  summarise(profit=sum(Profit));
+
+ggplot(subcategory_profit,mapping=aes(x=subcategory_profit$Sub.Category))+geom_col(aes(y=subcategory_profit$profit,fill="profit"))+facet_grid(.~Category,scales="free")+theme(axis.text.x=element_text(angle=90,hjust=1))+scale_fill_manual(values="green")+xlab("Sub Categories")+ylab("profit")
+
+
+```
+
+
+
+Segment-Category wise analysis
+================================================================================
+
+
+Row
+--------------------------------------------------------------------------------
+
+### Sales
+
+
+```{r}
+segment_sales=select(data,Category,Segment,Sales) %>%
+  group_by(Category,Segment) %>% 
+  summarise(sales=sum(Sales));
+ggplot(segment_sales,mapping=aes(x=segment_sales$Category))+geom_col(aes(y=segment_sales$sales,fill="sales"))+facet_grid(.~Segment,scales="free")+theme(axis.text.x=element_text(angle=90,hjust=1))+scale_fill_manual(values="blue")+xlab("Category")+ylab("Sales")
+
+```
+
+### Discount
+
+
+```{r}
+segment_discount=select(data,Category,Segment,Discount) %>%
+  group_by(Category,Segment) %>% 
+  summarise(discount=sum(Discount));
+ggplot(segment_discount,mapping=aes(x=segment_discount$Category))+geom_col(aes(y=segment_discount$discount,fill="discount"))+facet_grid(.~Segment,scales="free")+theme(axis.text.x=element_text(angle=90,hjust=1))+scale_fill_manual(values="red")+xlab("Category")+ylab("Discount")
+
+```
+
+
+### Profit
+
+
+```{r}
+segment_profit=select(data,Category,Segment,Profit) %>%
+  group_by(Category,Segment) %>% 
+  summarise(profit=sum(Profit));
+ggplot(segment_profit,mapping=aes(x=segment_profit$Category))+geom_col(aes(y=segment_profit$profit,fill="profit"))+facet_grid(.~Segment,scales="free")+theme(axis.text.x=element_text(angle=90,hjust=1))+scale_fill_manual(values="green")+xlab("Category")+ylab("Profit")
+
+```
+
+
+Region-Category wise analysis
+================================================================================
+
+Row
+--------------------------------------------------------------------------------
+
+### Sales
+
+
+```{r}
+region_sales=select(data,Category,Region,Sales) %>%
+  group_by(Category,Region) %>% 
+  summarise(sales=sum(Sales));
+ggplot(region_sales,mapping=aes(x=region_sales$Category))+geom_col(aes(y=region_sales$sales,fill="sales"))+facet_grid(.~Region,scales="free")+theme(axis.text.x=element_text(angle=90,hjust=1))+scale_fill_manual(values="blue")+xlab("Category")+ylab("Sales")
+
+```
+
+
+### Discount
+
+
+```{r}
+region_discount=select(data,Category,Region,Discount) %>%
+  group_by(Category,Region) %>% 
+  summarise(discount=sum(Discount));
+ggplot(region_discount,mapping=aes(x=region_discount$Category))+geom_col(aes(y=region_discount$discount,fill="Discount"))+facet_grid(.~Region,scales="free")+theme(axis.text.x=element_text(angle=90,hjust=1))+scale_fill_manual(values="red")+xlab("Category")+ylab("Discount")
+
+```
+
+
+### Profit
+
+
+```{r}
+region_profit=select(data,Category,Region,Profit) %>%
+  group_by(Category,Region) %>% 
+  summarise(profit=sum(Profit));
+ggplot(region_profit,mapping=aes(x=region_profit$Category))+geom_col(aes(y=region_profit$profit,fill="profit"))+facet_grid(.~Region,scales="free")+theme(axis.text.x=element_text(angle=90,hjust=1))+scale_fill_manual(values="green")+xlab("Category")+ylab("Profit")
+
+```
